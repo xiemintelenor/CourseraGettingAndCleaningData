@@ -1,0 +1,168 @@
+---
+title: "run_analysis"
+author: "Min Xie"
+date: "10/7/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document for the run_analysis.R script, written for the Course Getting and Cleaning Data project. The script is doing the following:
+
+1. Merges the training and the test sets to create one data set.
+2. Extracts only the measurements on the mean and standard deviation for each measurement.
+3. Uses descriptive activity names to name the activities in the data set
+4. Appropriately labels the data set with descriptive variable names.
+5. From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
+
+This script can generate: 
+1. a tidy data set saved in tidyData.txt 
+2. a code book with the description of all variables and summaries calculated, along with units and any other relevant information.
+
+First of all, two packages are loaded. 
+
+```{r - load package}
+library(data.table)
+library(reshape2)
+```
+
+# Get Data 
+As a preparation, the script starts with getting the data
+
+
+## Set working directory 
+```{r - set dir}
+setwd("~/Documents/Learning/Data Science/Course 3 - Cleaning Data/CourseraGettingAndCleaningData")
+```
+## Download the zip file 
+The data file is downloaded from the given repo: https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip 
+```{r - Download the file}
+dataURL <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+if (!file.exists('./Data')) {dir.create('./Data')}
+download.file(dataURL, destfile = "./Data/dataset.zip")
+```
+## Unzip the data file 
+Since the file is compressed into a .zip file, unzipping is required. 
+```{r - unzip the file}
+unzip (zipfile = "./Data/dataset.zip", exdir = "./Data")
+list.files("./Data/UCI HAR Dataset/", recursive = TRUE)
+```
+## Set the data path 
+```{r - set the data path}
+dataPath <- "./Data/UCI HAR Dataset/"
+```
+# Read Data                          
+The data diretory contains training data, test data, feature data, and activity data. These data sets are read into separate tables. If needed, the column names are redefined. 
+
+
+
+## Read features
+The feature data contains information of the names for each feature, i.e., featureData[,2] is the feature name for each variable in X of each data set 
+
+```{r - read features}
+featureData <- read.table(file.path(dataPath, "features.txt"), as.is = TRUE)
+```
+## Read training data 
+The training data (subject, X, and y) is read into the training tables, whose column names are set by the featureData:
+
+* Subject name: "SubjectID"
+* X variable names; from featureData[,2]
+* y name: "ActivityID"
+
+```{r - read training data}
+trainSubject <- read.table(file.path(dataPath, "train", "subject_train.txt"))
+colnames(trainSubject) <- 'SubjectID'
+trainX <- read.table(file.path(dataPath, "train", "X_train.txt"))
+colnames(trainX) <- featureData[,2]
+trainY <- read.table(file.path(dataPath, "train", "y_train.txt"))
+colnames(trainY) <- 'ActivityID'
+```
+## Read test data 
+The reading of test data is similar to the training data. The column names of each table is set by the featureData:
+
+* Subject name: "SubjectID"
+* X variable names; from featureData[,2]
+* y name: "ActivityID" 
+
+```{r - read test data}
+testSubject <- read.table(file.path(dataPath, "test", "subject_test.txt"))
+colnames(testSubject) <- 'SubjectID'
+testX <- read.table(file.path(dataPath, "test", "X_test.txt"))
+colnames(testX) <- featureData[,2]
+testY <- read.table(file.path(dataPath, "test", "y_test.txt"))
+colnames(testY) <- 'ActivityID'
+```
+## Read activity labels 
+
+The activity data will be used to describe the activities in Step 3 and 4. We name them as:
+
+* ActivityID: identical to data y
+* Activity: description of the activity 
+
+```{r - read activity}
+activityData <- read.table(file.path(dataPath, "activity_labels.txt"))
+colnames(activityData) <- c('ActivityID', 'Activity')
+```
+# Step 1: Merge the training data set and test data set into one data set                         
+The merging includes three parts:
+* merge the 3 training sets (subject, X, y) into one set - cbind;
+* merge the 3 test sets (subject, X, y) into one set - cbind;
+* merge the training and test data set into one set - rbind.
+
+For simplicity, these parts are done in one line with rbind and cbind
+
+```{r - merge data}
+mergedDataset <- rbind (cbind(trainSubject,trainX, trainY), cbind(testSubject,testX, testY))
+```
+# Step 2: Extract only the measurements on the mean and standard deviation for each measurement                      
+
+The extraction is done in two steps:
+
+1. the columns containing "mean" and "std" should be identified. 
+2. filter the data set based on the identified columns with mean and std (as well as subjectID and activityID) 
+
+```{r - extract data}
+# find the columns with only mean and std in the names
+colIndex <- grepl('SubjectID|ActivityID|mean..|std..', colnames(mergedDataset))
+
+# filter the data set for the columns of interest (with only mean and std)
+extractData <- mergedDataset[, colIndex]
+```
+# Step 3: Use desriptive activity names to name the ativities in the data set                      
+In this step, the information from activityData is used. 
+
+```{r - describe the activities}
+# use the activityData to name the activities 
+extractData$ActivityID <- factor (extractData$ActivityID, levels = activityData[['ActivityID']], labels = activityData[['Activity']])
+```
+# Step 4: Appropriately label the data set with descriptive variable names       
+
+In this step, both SubjectID and ActivityID are used to melt the data set. 
+
+```{r - melt the dataset }
+# transform the Subject into "factor" 
+extractData$SubjectID <- as.factor (extractData[,"SubjectID"])
+
+# melt the dataset into a form for casting based on SubjectID and ActivityID
+extractData <- reshape2::melt(data = extractData, id = c('SubjectID', 'ActivityID'))
+```
+# Step 5: From the data set in Step 4, create a second, independent tidy data set with the average of each variable for each activity and each subject  
+
+This step includes two parts:
+
+1. cast the dataset based on the calculated average for each activity and subject
+2. write the data table into a data file named tidyData.txt
+
+```{r - write file}
+# cast the dataset based on the "mean" function
+extractData <- reshape2::dcast(data = extractData, SubjectID + ActivityID ~ variable, fun.aggregate = mean)
+
+# write the dataset into a tidyData.txt file
+write.table(x = extractData, file = "./Data/tidyData.txt", row.names = FALSE, quote = FALSE)
+
+```
+ 
