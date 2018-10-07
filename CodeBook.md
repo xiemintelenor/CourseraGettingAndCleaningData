@@ -88,7 +88,7 @@ Main transformations are:
 ## Summaries
 The summaries of variables are calculated from R as follows:
 
-'''
+```R summary
   SubjectID                ActivityID tBodyAcc-mean()-X tBodyAcc-mean()-Y   tBodyAcc-mean()-Z  tBodyAcc-std()-X 
  1      :  6   WALKING           :30   Min.   :0.2216    Min.   :-0.040514   Min.   :-0.15251   Min.   :-0.9961  
  2      :  6   WALKING_UPSTAIRS  :30   1st Qu.:0.2712    1st Qu.:-0.020022   1st Qu.:-0.11207   1st Qu.:-0.9799  
@@ -216,4 +216,4 @@ The summaries of variables are calculated from R as follows:
  Mean   :-0.03603            Mean   :-0.7564             Mean   :-0.7715            Mean   : 0.12592               
  3rd Qu.: 0.08228            3rd Qu.:-0.5831             3rd Qu.:-0.6081            3rd Qu.: 0.20805               
  Max.   : 0.40952            Max.   : 0.1466             Max.   : 0.2878            Max.   : 0.42630        
-'''
+```
